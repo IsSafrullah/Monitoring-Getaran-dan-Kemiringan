@@ -9,9 +9,9 @@
 
 #define WIFI_SSID "AccessPoint_Kel1"
 #define WIFI_PASSWORD "12345678"
-#define BLYNK_TEMPLATE_ID "TMPL65CaGhBeI"
+#define BLYNK_TEMPLATE_ID "TMPL6VG7rR-nE"
 #define BLYNK_TEMPLATE_NAME "Monitoring Vibration and Tilt"
-#define BLYNK_AUTH_TOKEN "ClrP2LbYFfeCPWJcS862vlWjgddriz_J"
+#define BLYNK_AUTH_TOKEN "TmUXjvkS8W9jPyryVzX2zVzY30WgpbMm"
 
 #include <BlynkSimpleEsp32.h>
 
@@ -29,14 +29,14 @@ uint8_t fifoBuffer[64];
 Quaternion q;
 VectorFloat gravity;
 float ypr[3];
-VectorInt16 aa;
-VectorInt16 aaReal;
+VectorInt16 aa, aaReal;
 
 String statusGetaran = "Normal";
 String statusMiring = "Normal";
 
 float batasGetaran = 0.00;
 float batasMiring = 0.0;
+float prevAccMag = 0;
 
 BLYNK_WRITE(V6) {
   batasGetaran = param.asFloat();
@@ -121,11 +121,16 @@ void loop() {
 
     // Getaran → dari percepatan total (LSB/g = 16384)
     float accMag = sqrt(aaReal.x * aaReal.x + aaReal.y * aaReal.y + aaReal.z * aaReal.z) / 16384.0;
-    if (accMag > batasGetaran) {
+
+    float deltaAcc = abs(accMag - prevAccMag);
+    prevAccMag = accMag;
+
+    if (deltaAcc > batasGetaran) {
       statusGetaran = "Getar!";
     } else {
       statusGetaran = "Normal";
     }
+
 
     // Kemiringan (roll/pitch di luar batas)
     if (abs(pitch) > batasMiring || abs(roll) > batasMiring) {
@@ -152,8 +157,14 @@ void loop() {
     display.print("Roll: ");
     display.println(roll, 1);
     display.setCursor(0, 40);
-    display.print("AccMag: ");
-    display.println(accMag, 2);
+    display.print("deltaAcc: ");
+    display.println(deltaAcc, 2);
+    display.setCursor(0, 48);
+    display.print("Batas Getaran: ");
+    display.println(batasGetaran, 2);
+    display.setCursor(0, 56);
+    display.print("Batas Miring: ");
+    display.println(batasMiring, 1);
     display.display();
 
     Blynk.virtualWrite(V0, statusMiring);
@@ -161,7 +172,7 @@ void loop() {
     Blynk.virtualWrite(V2, yaw);
     Blynk.virtualWrite(V3, pitch);
     Blynk.virtualWrite(V4, roll);
-    Blynk.virtualWrite(V5, accMag);
+    Blynk.virtualWrite(V5, deltaAcc);
   }
   delay(100);
 }
